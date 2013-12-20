@@ -24,7 +24,7 @@ import java.util.concurrent.Future
  * blocked.
  *
  * The monitor does not support IPv6.
-
+ *
  * @author Ronny Trommer (ronny@opennms.org)
  * @since 1.0-SNAPSHOT
  */
