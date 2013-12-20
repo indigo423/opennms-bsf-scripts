@@ -23,11 +23,7 @@ class LookupResult {
     TimeDuration lookupTime = null;
 
     def String toString() {
-        return "DNSRBL provider [${blProvider}] :: is black listed [${isBlacklisted}] :: resolve time [${lookupTime.toMilliseconds()} ms]"
-    }
-
-    def String getBlProvider() {
-        return this.blProvider
+        return "DNSRBL provider = [${blProvider}]; Is black listed = [${isBlacklisted}], Resolve time = [${lookupTime.toMilliseconds()} ms]"
     }
 }
 
