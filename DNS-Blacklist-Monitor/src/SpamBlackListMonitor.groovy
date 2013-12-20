@@ -21,8 +21,8 @@ import java.util.concurrent.Future
  *   34.224.226.87.bl.spamcop.net has address 127.0.0.2
  *
  * If the reverse address has an A record the IP address for the mail server
- * is on the block list. If you don't have an A record the server is not
- * blocked.
+ * is on the block list of the given DNSRBL server. If you don't have an
+ * A record the server is not blocked.
  *
  * The monitor does not support IPv6.
  *
@@ -152,10 +152,13 @@ def dnsRblProviderList = [
         'wormrbl.imp.ch',
         'xbl.spamhaus.org',
         'zen.spamhaus.org',
-        'zombie.dnsbl.sorbs.net',
-        'relays.bl.kundenserver.de',
-        'probes.dnsbl.net.au proxy.bl.gweep.ca proxy.block.transip.nl',
-        'relays.nether.net residential.block.transip.nl'
+        'zombie.dnsbl.sorbs.net'
+/**
+ * Commented very slow DNSRBL provider, cause resolve time is up to 35 seconds
+ *      'relays.bl.kundenserver.de',
+ *      'probes.dnsbl.net.au proxy.bl.gweep.ca proxy.block.transip.nl',
+ *      'relays.nether.net residential.block.transip.nl'
+ */
 ]
 
 /**
