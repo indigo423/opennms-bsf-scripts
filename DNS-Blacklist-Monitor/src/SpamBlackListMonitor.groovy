@@ -5,6 +5,7 @@ import groovy.time.TimeDuration
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
+
 /**
  * Multi-threaded monitor to check if a specific IP address is registered
  * on a DNS Realtime Blacklist (DNSRBL) service. The monitor uses the
@@ -28,8 +29,6 @@ import java.util.concurrent.Future
  * @author Ronny Trommer (ronny@opennms.org)
  * @since 1.0-SNAPSHOT
  */
-// Amount of Threads you want to use for the DNS lookups
-MAX_THREADS = 10
 
 /**
  * Class with a lookup result. It represents a result from DNSRBL lookup.
@@ -61,6 +60,11 @@ class LookupResult {
         return "DNSRBL provider = [${blProvider}]; Is black listed = [${isBlacklisted}], Resolve time = [${lookupTime.toMilliseconds()} ms]"
     }
 }
+
+/**
+ * Amount of Threads for parallel the DNS lookups
+ */
+MAX_THREADS = 10
 
 /**
  * Closure for parallel blacklist lookups
