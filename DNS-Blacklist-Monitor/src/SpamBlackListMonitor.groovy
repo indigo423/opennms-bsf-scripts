@@ -1,12 +1,11 @@
 #!/usr/bin/env groovy
 import groovy.time.TimeCategory
 import groovy.time.TimeDuration
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
 
 /**
  * Multi-threaded monitor to check if a specific IP address is registered
@@ -55,7 +54,9 @@ import java.util.concurrent.Future
  */
 
 /**
- * Class with a lookup result. It represents a result from DNSRBL lookup.
+ * Class with a lookup result. It represents a result from DNSRBL lookup which contains
+ * the Blacklist provider, a flag for blacklisted entry and the lookup time for the specific
+ * Blacklist provider.
  */
 class LookupResult {
 
@@ -84,15 +85,21 @@ class LookupResult {
         return "DNSRBL provider = [${blProvider}]; Is black listed = [${isBlacklisted}], Resolve time = [${lookupTime.toMilliseconds()} ms]"
     }
 }
-/**
- * Initialize logging framework
- */
-Logger log = LoggerFactory.getLogger("POLLER");
 
 /**
  * Amount of Threads for parallel the DNS lookups
  */
 MAX_THREADS = 10
+
+/**
+ * Initialize timeout for waiting on lookup threads is initialized with 30 seconds
+ */
+TIMEOUT = 30000
+
+/**
+ *
+ */
+results.put('status', 'UNR')
 
 /**
  * Closure for parallel blacklist lookups
@@ -201,17 +208,17 @@ def private buildQuery(String ipAddress, String blProvider) {
     def ipAddressOctets = ipAddress.split("\\.");
     def reverseIpString = ""
 
-    // Reverse IPv4 octets and append "."
+    // Reverse IPv4 octets and append "." (10.0.1.2 -> 2.1.0.10.)
     for (octet in ipAddressOctets.reverse()) {
         reverseIpString += octet + "."
     }
 
-    // Return reversed IPv4 address with DNSRBL provider domain name
+    // Return reversed IPv4 address with DNSRBL provider domain name (e.g. 2.1.0.10.bl.spamcop.net)
     return reverseIpString + blProvider
 }
 
 /**
- * Request DNS A record for given IPv4 address for a specific DNSRBL provider
+ * Request DNS A record for given IPv4 address for a given DNSRBL Blacklist provider
  *
  * @param ipAddress IPv4 address as {@link java.lang.String}
  * @param blProvider Domain name of the DNSRBL provider as {@link java.lang.String}
@@ -236,10 +243,12 @@ def private LookupResult blackListLookup(String ipAddress, String blProvider) {
 
         // DNS A record successful, IP address is registered on the DNSRBL provider
         lookupResult.isBlacklisted = true;
+        bsf_monitor.log("IP address " + ipAddress + " *IS* blacklisted on " + blProvider + ". Lookup query: " + query, null)
     } catch (UnknownHostException e) {
 
         // No A record found, IP address is not registered on the DNSRBL provider
         lookupResult.isBlacklisted = false;
+        bsf_monitor.log("IP address " + ipAddress + " *NOT* blacklisted on " + blProvider + ". Lookup query: " + query, null)
     }
 
     // Stop time measurement for specific DNS A record lookup
@@ -295,13 +304,18 @@ def private String buildMonitoringOutput(Collection blacklistResultList) {
  * Running the script
  */
 // groovy poller is starting
-log.info('bsf %s start', svc_name);
+bsf_monitor.log("DEBUG", "BSFMonitor [" + svc_name + "] start", null);
+
+// If the poller-configuration has timeout set
+if (!map.get("timeout") == null) {
+    TIMEOUT = map.get("timeout")
+}
 
 try {
-    log.info("service name: %s ipaddr: %s node id: %s nodelabel: %s", svc_name, ip_addr, node_id, node_label);
+    bsf_monitor.log("INFO", "service name: " + svc_name + " ipaddr: " + ipAddress + " node label: " + node_label + "[" + node_id + "]", null);
     // from map object
-    log.info("source script filename: %s", map.get("file-name"));
-    log.info("parameter key=script_option from poller config: %s", map.get("script_option"));
+    bsf_monitor.log("INFO", "source script filename: " + map.get("file-name"), null)
+    bsf_monitor.log("INFO", "parameter key=script_option from poller config: " + map.get("script_option"), null)
 } catch (e) {
 }
 
@@ -316,7 +330,10 @@ try {
     // Get all results from threads
     blacklistResultList = futures.collect { it.get() } as Collection<LookupResult>
 } finally {
+    threadPool.awaitTermination(TIMEOUT, TimeUnit.MILLISECONDS)
+    bsf_monitor.log("DEBUG", "Thread pool awaiting timeout set to " + TIMEOUT, null)
     threadPool.shutdown()
+    bsf_monitor.log("DEBUG", "Shutdown SpamBlackListMonitor thread pool", null)
 }
 
 // Stop total time measurement
@@ -328,4 +345,4 @@ buildMonitoringOutput(blacklistResultList)
 // Calculate time duration
 TimeDuration duration = TimeCategory.minus(timeStop, timeStart)
 times.put("DnsRblTotalTime", duration.toMilliseconds())
-log.info('bsf %s finished', svc_name);
+bsf_monitor.log("INFO", "BSFMonitor " + svc_name + " finished", null)
