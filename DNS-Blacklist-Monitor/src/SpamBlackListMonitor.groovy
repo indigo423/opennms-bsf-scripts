@@ -1,6 +1,8 @@
 #!/usr/bin/env groovy
 import groovy.time.TimeCategory
 import groovy.time.TimeDuration
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -60,6 +62,10 @@ class LookupResult {
         return "DNSRBL provider = [${blProvider}]; Is black listed = [${isBlacklisted}], Resolve time = [${lookupTime.toMilliseconds()} ms]"
     }
 }
+/**
+ * Initialize logging framework
+ */
+Logger log = LoggerFactory.getLogger("POLLER");
 
 /**
  * Amount of Threads for parallel the DNS lookups
@@ -259,6 +265,20 @@ def private String buildMonitoringOutput(Collection blacklistResultList) {
     return output
 }
 
+/**
+ * Running the script
+ */
+// groovy poller is starting
+log.info('bsf %s start', svc_name);
+
+try {
+    log.info("service name: %s ipaddr: %s node id: %s nodelabel: %s", svc_name, ip_addr, node_id, node_label);
+    // from map object
+    log.info("source script filename: %s", map.get("file-name"));
+    log.info("parameter key=script_option from poller config: %s", map.get("script_option"));
+} catch (e) {
+}
+
 try {
     // Try to make lookups with parallel threads
     List<Future> futures = dnsRblProviderList.collect { blProvider ->
@@ -276,8 +296,10 @@ try {
 // Stop total time measurement
 def timeStop = new Date()
 
+// Evaluate output and build result map
+buildMonitoringOutput(blacklistResultList)
+
 // Calculate time duration
 TimeDuration duration = TimeCategory.minus(timeStop, timeStart)
-
-// Output result
-println "${duration.toMilliseconds()}, " + buildMonitoringOutput(blacklistResultList)
+times.put("DnsRblTotalTime", duration.toMilliseconds())
+log.info('bsf %s finished', svc_name);
