@@ -333,6 +333,12 @@ try {
     threadPool.awaitTermination(TIMEOUT, TimeUnit.MILLISECONDS)
     bsf_monitor.log("DEBUG", "Thread pool awaiting timeout set to " + TIMEOUT, null)
     threadPool.shutdown()
+    try {
+        threadPool.awaitTermination(TIMEOUT, TimeUnit.MILLISECONDS)
+        bsf_monitor.log("DEBUG", "Thread pool awaiting timeout set to " + TIMEOUT, null)
+    } catch (InterruptedException e) {
+        bsf_monitor.log("ERROR", "Thread pool awaiting timeout was interrupted with message: " + e.getMessage())
+    }
     bsf_monitor.log("DEBUG", "Shutdown SpamBlackListMonitor thread pool", null)
 }
 
