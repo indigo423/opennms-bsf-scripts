@@ -264,7 +264,7 @@ def private LookupResult blackListLookup(String ipAddress, String blProvider) {
 def private String buildMonitoringOutput(Collection blacklistResultList) {
     def output = ""
 
-    // Iterate on all DNS lookup results
+    // Get all black list provider where the IP address is registered
     for (blacklistResult in blacklistResultList) {
         if (blacklistResult.isBlacklisted) {
             // IP address is registered on a black list
