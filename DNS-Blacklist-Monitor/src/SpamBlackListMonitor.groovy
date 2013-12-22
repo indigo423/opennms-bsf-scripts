@@ -97,9 +97,9 @@ MAX_THREADS = 10
 TIMEOUT = 30000
 
 /**
- *
+ * Initialize poller status with UNKNOWN --> Service down
  */
-results.put('status', 'UNR')
+results.put('status', 'UNK')
 
 /**
  * Closure for parallel blacklist lookups
