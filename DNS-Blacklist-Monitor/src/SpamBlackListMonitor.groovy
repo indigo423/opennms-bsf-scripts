@@ -9,9 +9,9 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Multi-threaded monitor to check if a specific IP address is registered
- * on a DNS Realtime Blacklist (DNSRBL) service. The monitor uses the
+ * on a DNS Real-time Blackhole List (DNSRBL) service. The monitor uses the
  * reverse IP DNS lookups against a set of DNSRBL provider. For DNS lookup
- * the InetAddress.getByName is used.
+ * the InetAddress.getByName() method is used.
  *
  * For example:
  * ------------
@@ -61,7 +61,7 @@ import java.util.concurrent.TimeUnit
 class LookupResult {
 
     /**
-     * Name of the DNS real time blacklist provider
+     * Name of the DNS real time Blackholelist provider
      */
     String blProvider = null;
 
@@ -104,7 +104,7 @@ results.put('status', 'UNK')
 /**
  * Closure for parallel blacklist lookups
  */
-def myClosure = { blProvider, ipAddress -> blackListLookup(ipAddress, blProvider) }
+def myClosure = { blProvider, ipAddress -> blackholeListLookup(ipAddress, blProvider) }
 
 /**
  * IP address to test
@@ -224,7 +224,7 @@ def private buildQuery(String ipAddress, String blProvider) {
  * @param blProvider Domain name of the DNSRBL provider as {@link java.lang.String}
  * @return lookup result as {@link LookupResult}
  */
-def private LookupResult blackListLookup(String ipAddress, String blProvider) {
+def private LookupResult blackholeListLookup(String ipAddress, String blProvider) {
     // Build the host name for the DNS A record request
     def query = buildQuery(ipAddress, blProvider)
 
@@ -243,12 +243,12 @@ def private LookupResult blackListLookup(String ipAddress, String blProvider) {
 
         // DNS A record successful, IP address is registered on the DNSRBL provider
         lookupResult.isBlacklisted = true;
-        bsf_monitor.log("IP address " + ipAddress + " *IS* blacklisted on " + blProvider + ". Lookup query: " + query, null)
+        bsf_monitor.log("IP address " + ipAddress + " *IS* blackhole listed on " + blProvider + ". Lookup query: " + query, null)
     } catch (UnknownHostException e) {
 
         // No A record found, IP address is not registered on the DNSRBL provider
         lookupResult.isBlacklisted = false;
-        bsf_monitor.log("IP address " + ipAddress + " *NOT* blacklisted on " + blProvider + ". Lookup query: " + query, null)
+        bsf_monitor.log("IP address " + ipAddress + " *NOT* on blackhole list " + blProvider + ". Lookup query: " + query, null)
     }
 
     // Stop time measurement for specific DNS A record lookup
