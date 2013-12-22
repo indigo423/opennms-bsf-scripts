@@ -28,6 +28,28 @@ import java.util.concurrent.Future
  *
  * The monitor does not support IPv6.
  *
+ *
+ * The following variables are passed into the script from OpenNMS:
+ *
+ *   map         - a Map object that contains all the various parameters passed
+ *                 to the monitor from the service definition in the
+ *                 poller-configuration.xml file
+ *   ip_addr     - the IP address that is currently being polled.
+ *   node_id     - the Node ID of the node the ip_addr belongs to
+ *                 node_label - this nodes label
+ *   node_label -  this nodes label
+ *   svc_name    - the name of the service that is being polled
+ *   bsf_monitor - the instance of the BSFMonitor object calling the script,
+ *                 useful primarily for purposes of logging via its
+ *                 log(String sev, String fmt, Object... args) method.
+ *   results     - a hash map (string, string) that the script may use to pass its
+ *                 results back to the BSFMonitor - the status indication should be
+ *                 set into the entry with key "status", and for status indications
+ *                 other than "OK," a reason code should be set into the entry with
+ *                 key "reason"
+ *   times       - an ordered hash map (string, number) that the script may use to
+ *                 pass one or more response times back to the BSFMonitor
+ *
  * @author Ronny Trommer (ronny@opennms.org)
  * @since 1.0-SNAPSHOT
  */
@@ -80,8 +102,7 @@ def myClosure = { blProvider, ipAddress -> blackListLookup(ipAddress, blProvider
 /**
  * IP address to test
  */
-def ipAddress = '87.226.224.34'
-// def ipAddress = '31.15.64.120'
+def ipAddress = ip_addr
 
 /**
  * Collection with DNSRBL lookup results
@@ -249,7 +270,7 @@ def private String buildMonitoringOutput(Collection blacklistResultList) {
             // IP address is registered on a black list
             if ("".equals(output)) {
                 // first entry
-                output += "NOK, ${blacklistResult.blProvider}"
+                output += "${blacklistResult.blProvider}"
             } else {
                 // 2nd + entry
                 output = "${output}, ${blacklistResult.blProvider}"
@@ -259,8 +280,13 @@ def private String buildMonitoringOutput(Collection blacklistResultList) {
 
     if ("".equals(output)) {
         // The IP address is not registered on any of the DNSRBL provider
-        output = "OK"
-    } // At least one DNSRBL provider has the IPv4 address registered and blocks the IP
+        results.put("status", "OK")
+    } else {
+        // At least one DNSRBL provider has the IPv4 address registered and blocks the IP
+        results.put("status", "NOK")
+        results.put("reason", "IP address black listed on: " + output)
+
+    }
 
     return output
 }
