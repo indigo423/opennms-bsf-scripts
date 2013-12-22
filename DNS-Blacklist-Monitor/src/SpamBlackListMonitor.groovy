@@ -91,107 +91,109 @@ class LookupResult {
     }
 }
 
-/**
- * Amount of Threads for parallel the DNS lookups
- */
-MAX_THREADS = 10
+class SpamBlackListMonitor {
 
-/**
- * Closure for parallel blacklist lookups
- */
-def myClosure = { blProvider, ipAddress -> blackListLookup(ipAddress, blProvider) }
+    /**
+    * Amount of Threads for parallel the DNS lookups
+    */
+    def MAX_THREADS = 10
 
-/**
- * IP address to test
- */
-def String ipAddress = ip_addr
+    /**
+    * Closure for parallel blacklist lookups
+    */
+    def myClosure = { blProvider, ipAddress -> blackListLookup(ipAddress, blProvider) }
 
-// def ipAddress = '87.226.224.34'
-// def ipAddress = '31.15.64.120'
+    /**
+    * IP address to test
+    */
+    def String ipAddress = ip_addr
 
-/**
- * Collection with DNSRBL lookup results
- */
-def Collection<LookupResult> blacklistResultList = null;
+    // def ipAddress = '87.226.224.34'
+    // def ipAddress = '31.15.64.120'
 
-/**
- * Thread pool for DNS lookups
- */
-def threadPool = Executors.newFixedThreadPool(MAX_THREADS)
+    /**
+    * Collection with DNSRBL lookup results
+    */
+    def Collection<LookupResult> blacklistResultList = null;
 
-/**
- * Start time for total time measurement
- */
-def timeStart = new Date()
+    /**
+    * Thread pool for DNS lookups
+    */
+    def threadPool = Executors.newFixedThreadPool(MAX_THREADS)
 
+    /**
+    * Start time for total time measurement
+    */
+    def timeStart = new Date()
+
+    /**
+    * List with all DNSRBL provider
+    */
+    def dnsRblProviderList = [
+            'b.barracudacentral.org',
+            'bl.emailbasura.org',
+            'bl.spamcannibal.org',
+            'bl.spamcop.net',
+            'blackholes.five-ten-sg.com',
+            'blacklist.woody.ch',
+            'bogons.cymru.com',
+            'cbl.abuseat.org cdl.anti-spam.org.cn',
+            'combined.abuse.ch combined.rbl.msrbl.net',
+            'db.wpbl.info',
+            'dnsbl-1.uceprotect.net',
+            'dnsbl-2.uceprotect.net',
+            'dnsbl-3.uceprotect.net',
+            'dnsbl.ahbl.org',
+            'dnsbl.cyberlogic.net',
+            'dnsbl.inps.de',
+            'dnsbl.sorbs.net drone.abuse.ch',
+            'drone.abuse.ch',
+            'duinv.aupads.org',
+            'dul.dnsbl.sorbs.net dul.ru',
+            'dyna.spamrats.com dynip.rothen.com',
+            'http.dnsbl.sorbs.net',
+            'images.rbl.msrbl.net',
+            'ips.backscatterer.org ix.dnsbl.manitu.net',
+            'korea.services.net',
+            'misc.dnsbl.sorbs.net',
+            'noptr.spamrats.com',
+            'ohps.dnsbl.net.au omrs.dnsbl.net.au orvedb.aupads.org',
+            'osps.dnsbl.net.au osrs.dnsbl.net.au owfs.dnsbl.net.au',
+            'owps.dnsbl.net.au pbl.spamhaus.org',
+            'phishing.rbl.msrbl.net',
+            'psbl.surriel.com',
+            'rbl.interserver.net rbl.megarbl.net',
+            'rdts.dnsbl.net.au relays.bl.gweep.ca',
+            'ricn.dnsbl.net.au',
+            'rmst.dnsbl.net.au sbl.spamhaus.org',
+            'short.rbl.jp',
+            'smtp.dnsbl.sorbs.net',
+            'socks.dnsbl.sorbs.net spam.abuse.ch',
+            'spam.dnsbl.sorbs.net',
+            'spam.rbl.msrbl.net',
+            'spam.spamrats.com',
+            'spamlist.or.kr',
+            'spamrbl.imp.ch',
+            't3direct.dnsbl.net.au',
+            'tor.ahbl.org',
+            'tor.dnsbl.sectoor.de',
+            'torserver.tor.dnsbl.sectoor.de',
+            'ubl.lashback.com',
+            'ubl.unsubscore.com',
+            'virbl.bit.nl',
+            'virus.rbl.jp',
+            'virus.rbl.msrbl.net web.dnsbl.sorbs.net',
+            'wormrbl.imp.ch',
+            'xbl.spamhaus.org',
+            'zen.spamhaus.org',
+            'zombie.dnsbl.sorbs.net'
 /**
- * List with all DNSRBL provider
+     * Commented very slow DNSRBL provider, cause resolve time is up to 35 seconds
+     *      'relays.bl.kundenserver.de',
+     *      'probes.dnsbl.net.au proxy.bl.gweep.ca proxy.block.transip.nl',
+     *      'relays.nether.net residential.block.transip.nl'
  */
-def dnsRblProviderList = [
-        'b.barracudacentral.org',
-        'bl.emailbasura.org',
-        'bl.spamcannibal.org',
-        'bl.spamcop.net',
-        'blackholes.five-ten-sg.com',
-        'blacklist.woody.ch',
-        'bogons.cymru.com',
-        'cbl.abuseat.org cdl.anti-spam.org.cn',
-        'combined.abuse.ch combined.rbl.msrbl.net',
-        'db.wpbl.info',
-        'dnsbl-1.uceprotect.net',
-        'dnsbl-2.uceprotect.net',
-        'dnsbl-3.uceprotect.net',
-        'dnsbl.ahbl.org',
-        'dnsbl.cyberlogic.net',
-        'dnsbl.inps.de',
-        'dnsbl.sorbs.net drone.abuse.ch',
-        'drone.abuse.ch',
-        'duinv.aupads.org',
-        'dul.dnsbl.sorbs.net dul.ru',
-        'dyna.spamrats.com dynip.rothen.com',
-        'http.dnsbl.sorbs.net',
-        'images.rbl.msrbl.net',
-        'ips.backscatterer.org ix.dnsbl.manitu.net',
-        'korea.services.net',
-        'misc.dnsbl.sorbs.net',
-        'noptr.spamrats.com',
-        'ohps.dnsbl.net.au omrs.dnsbl.net.au orvedb.aupads.org',
-        'osps.dnsbl.net.au osrs.dnsbl.net.au owfs.dnsbl.net.au',
-        'owps.dnsbl.net.au pbl.spamhaus.org',
-        'phishing.rbl.msrbl.net',
-        'psbl.surriel.com',
-        'rbl.interserver.net rbl.megarbl.net',
-        'rdts.dnsbl.net.au relays.bl.gweep.ca',
-        'ricn.dnsbl.net.au',
-        'rmst.dnsbl.net.au sbl.spamhaus.org',
-        'short.rbl.jp',
-        'smtp.dnsbl.sorbs.net',
-        'socks.dnsbl.sorbs.net spam.abuse.ch',
-        'spam.dnsbl.sorbs.net',
-        'spam.rbl.msrbl.net',
-        'spam.spamrats.com',
-        'spamlist.or.kr',
-        'spamrbl.imp.ch',
-        't3direct.dnsbl.net.au',
-        'tor.ahbl.org',
-        'tor.dnsbl.sectoor.de',
-        'torserver.tor.dnsbl.sectoor.de',
-        'ubl.lashback.com',
-        'ubl.unsubscore.com',
-        'virbl.bit.nl',
-        'virus.rbl.jp',
-        'virus.rbl.msrbl.net web.dnsbl.sorbs.net',
-        'wormrbl.imp.ch',
-        'xbl.spamhaus.org',
-        'zen.spamhaus.org',
-        'zombie.dnsbl.sorbs.net'
-/**
- * Commented very slow DNSRBL provider, cause resolve time is up to 35 seconds
- *      'relays.bl.kundenserver.de',
- *      'probes.dnsbl.net.au proxy.bl.gweep.ca proxy.block.transip.nl',
- *      'relays.nether.net residential.block.transip.nl'
- */
-]
+    ]
 
 /**
  * Create DNS hostname to request A record. The IP address is reversed
@@ -201,19 +203,19 @@ def dnsRblProviderList = [
  * @param blProvider DNSRBL provider DNS domain as {@link java.lang.String}
  * @return reverse IP address with DNSRBL domain name as {@link java.lang.String}
  */
-def private buildQuery(String ipAddress, String blProvider) {
-    // Split IPv4 address in octets
-    def ipAddressOctets = ipAddress.split("\\.");
-    def reverseIpString = ""
+    def buildQuery(String ipAddress, String blProvider) {
+        // Split IPv4 address in octets
+        def ipAddressOctets = ipAddress.split("\\.");
+        def reverseIpString = ""
 
-    // Reverse IPv4 octets and append "."
-    for (octet in ipAddressOctets.reverse()) {
-        reverseIpString += octet + "."
+        // Reverse IPv4 octets and append "."
+        for (octet in ipAddressOctets.reverse()) {
+            reverseIpString += octet + "."
+        }
+
+        // Return reversed IPv4 address with DNSRBL provider domain name
+        return reverseIpString + blProvider
     }
-
-    // Return reversed IPv4 address with DNSRBL provider domain name
-    return reverseIpString + blProvider
-}
 
 /**
  * Request DNS A record for given IPv4 address for a specific DNSRBL provider
@@ -222,42 +224,42 @@ def private buildQuery(String ipAddress, String blProvider) {
  * @param blProvider Domain name of the DNSRBL provider as {@link java.lang.String}
  * @return lookup result as {@link LookupResult}
  */
-def private LookupResult blackListLookup(String ipAddress, String blProvider) {
-    // Build the host name for the DNS A record request
-    def query = buildQuery(ipAddress, blProvider)
+    def private LookupResult blackListLookup(String ipAddress, String blProvider) {
+        // Build the host name for the DNS A record request
+        def query = buildQuery(ipAddress, blProvider)
 
-    // Start time measurement for specific DNS A record lookup
-    def startLookupTime = new Date()
+        // Start time measurement for specific DNS A record lookup
+        def startLookupTime = new Date()
 
-    // Initialize empty lookup result
-    def LookupResult lookupResult = new LookupResult()
+        // Initialize empty lookup result
+        def LookupResult lookupResult = new LookupResult()
 
-    // Try DNS lookup and filling up lookup result
-    try {
-        lookupResult.blProvider = blProvider
+        // Try DNS lookup and filling up lookup result
+        try {
+            lookupResult.blProvider = blProvider
 
-        // DNS A record request
-        InetAddress.getByName(query)
+            // DNS A record request
+            InetAddress.getByName(query)
 
-        // DNS A record successful, IP address is registered on the DNSRBL provider
-        lookupResult.isBlacklisted = true;
-    } catch (UnknownHostException e) {
+            // DNS A record successful, IP address is registered on the DNSRBL provider
+            lookupResult.isBlacklisted = true;
+        } catch (UnknownHostException e) {
 
-        // No A record found, IP address is not registered on the DNSRBL provider
-        lookupResult.isBlacklisted = false;
+            // No A record found, IP address is not registered on the DNSRBL provider
+            lookupResult.isBlacklisted = false;
+        }
+
+        // Stop time measurement for specific DNS A record lookup
+        def stopLookupTime = new Date()
+
+        // Calculate time difference
+        TimeDuration duration = TimeCategory.minus(stopLookupTime, startLookupTime)
+
+        // Fill time measurement in lookup result
+        lookupResult.lookupTime = duration
+
+        return lookupResult
     }
-
-    // Stop time measurement for specific DNS A record lookup
-    def stopLookupTime = new Date()
-
-    // Calculate time difference
-    TimeDuration duration = TimeCategory.minus(stopLookupTime, startLookupTime)
-
-    // Fill time measurement in lookup result
-    lookupResult.lookupTime = duration
-
-    return lookupResult
-}
 
 /**
  * Create output for the monitoring system
@@ -266,30 +268,31 @@ def private LookupResult blackListLookup(String ipAddress, String blProvider) {
  *      with all DNS lookup results for all DNSRBL provider as {@link java.util.Collection}
  * @return Output for monitoring system as {@link java.lang.String}
  */
-def private buildMonitoringOutput(Collection blacklistResultList) {
-    def output = ""
+    def private buildMonitoringOutput(Collection blacklistResultList) {
+        def output = ""
 
-    // Iterate on all DNS lookup results
-    for (blacklistResult in blacklistResultList) {
-        if (blacklistResult.isBlacklisted) {
-            // IP address is registered on a black list
-            if ("".equals(output)) {
-                // first entry
-                output += "${blacklistResult.blProvider}"
-            } else {
-                // 2nd + entry
-                output = "${output}, ${blacklistResult.blProvider}"
+        // Iterate on all DNS lookup results
+        for (blacklistResult in blacklistResultList) {
+            if (blacklistResult.isBlacklisted) {
+                // IP address is registered on a black list
+                if ("".equals(output)) {
+                    // first entry
+                    output += "${blacklistResult.blProvider}"
+                } else {
+                    // 2nd + entry
+                    output = "${output}, ${blacklistResult.blProvider}"
+                }
             }
         }
-    }
 
-    if ("".equals(output)) {
-        // The IP address is not registered on any of the DNSRBL provider -> OK
-        results.put("status", "OK")
-    } else {
-        // At least one DNSRBL provider has the IPv4 address registered and blocks the IP -> NOK
-        results.put("status", "NOK")
-        results.put("reason", "IP address black listed on: " + output)
+        if ("".equals(output)) {
+            // The IP address is not registered on any of the DNSRBL provider -> OK
+            results.put("status", "OK")
+        } else {
+            // At least one DNSRBL provider has the IPv4 address registered and blocks the IP -> NOK
+            results.put("status", "NOK")
+            results.put("reason", "IP address black listed on: " + output)
+        }
     }
 }
 
@@ -297,9 +300,9 @@ def private buildMonitoringOutput(Collection blacklistResultList) {
  * Running the script
  */
 def execute() {
-log.
+    log.
     // groovy poller is starting
-    log.info('bsf %s start', svc_name);
+            log.info('bsf %s start', svc_name);
     try {
         log.info("service name: %s ipaddr: %s node id: %s nodelabel: %s", svc_name, ip_addr, node_id, node_label);
         // from map object
