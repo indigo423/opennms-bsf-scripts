@@ -1,6 +1,9 @@
 #!/usr/bin/env groovy
+
 import groovy.time.TimeCategory
 import groovy.time.TimeDuration
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -26,9 +29,36 @@ import java.util.concurrent.Future
  *
  * The monitor does not support IPv6.
  *
+ *
+ * The following variables are passed into the script from OpenNMS:
+ *
+ *   map         - a Map object that contains all the various parameters passed
+ *                 to the monitor from the service definition in the
+ *                 poller-configuration.xml file
+ *   ip_addr     - the IP address that is currently being polled.
+ *   node_id     - the Node ID of the node the ip_addr belongs to
+ *                 node_label - this nodes label
+ *   node_label -  this nodes label
+ *   svc_name    - the name of the service that is being polled
+ *   bsf_monitor - the instance of the BSFMonitor object calling the script,
+ *                 useful primarily for purposes of logging via its
+ *                 log(String sev, String fmt, Object... args) method.
+ *   results     - a hash map (string, string) that the script may use to pass its
+ *                 results back to the BSFMonitor - the status indication should be
+ *                 set into the entry with key "status", and for status indications
+ *                 other than "OK," a reason code should be set into the entry with
+ *                 key "reason"
+ *   times       - an ordered hash map (string, number) that the script may use to
+ *                 pass one or more response times back to the BSFMonitor
+ *
  * @author Ronny Trommer (ronny@opennms.org)
  * @since 1.0-SNAPSHOT
  */
+
+/**
+ * Initialize logging framework
+ */
+Logger log = LoggerFactory.getLogger("POLLER");
 
 /**
  * Class with a lookup result. It represents a result from DNSRBL lookup.
@@ -74,7 +104,9 @@ def myClosure = { blProvider, ipAddress -> blackListLookup(ipAddress, blProvider
 /**
  * IP address to test
  */
-def ipAddress = '87.226.224.34'
+def String ipAddress = ip_addr
+
+// def ipAddress = '87.226.224.34'
 // def ipAddress = '31.15.64.120'
 
 /**
@@ -234,7 +266,7 @@ def private LookupResult blackListLookup(String ipAddress, String blProvider) {
  *      with all DNS lookup results for all DNSRBL provider as {@link java.util.Collection}
  * @return Output for monitoring system as {@link java.lang.String}
  */
-def private String buildMonitoringOutput(Collection blacklistResultList) {
+def private buildMonitoringOutput(Collection blacklistResultList) {
     def output = ""
 
     // Iterate on all DNS lookup results
@@ -243,7 +275,7 @@ def private String buildMonitoringOutput(Collection blacklistResultList) {
             // IP address is registered on a black list
             if ("".equals(output)) {
                 // first entry
-                output += "NOK, ${blacklistResult.blProvider}"
+                output += "${blacklistResult.blProvider}"
             } else {
                 // 2nd + entry
                 output = "${output}, ${blacklistResult.blProvider}"
@@ -252,32 +284,55 @@ def private String buildMonitoringOutput(Collection blacklistResultList) {
     }
 
     if ("".equals(output)) {
-        // The IP address is not registered on any of the DNSRBL provider
-        output = "OK"
-    } // At least one DNSRBL provider has the IPv4 address registered and blocks the IP
-
-    return output
+        // The IP address is not registered on any of the DNSRBL provider -> OK
+        results.put("status", "OK")
+    } else {
+        // At least one DNSRBL provider has the IPv4 address registered and blocks the IP -> NOK
+        results.put("status", "NOK")
+        results.put("reason", "IP address black listed on: " + output)
+    }
 }
 
-try {
-    // Try to make lookups with parallel threads
-    List<Future> futures = dnsRblProviderList.collect { blProvider ->
-        threadPool.submit({ ->
-            myClosure blProvider, ipAddress
-        } as Callable);
+/**
+ * Running the script
+ */
+def execute() {
+log.
+    // groovy poller is starting
+    log.info('bsf %s start', svc_name);
+    try {
+        log.info("service name: %s ipaddr: %s node id: %s nodelabel: %s", svc_name, ip_addr, node_id, node_label);
+        // from map object
+        log.info("source script filename: %s", map.get("file-name"));
+        log.info("parameter key=script_option from poller config: %s", map.get("script_option"));
+    } catch (e) {
     }
 
-    // Get all results from threads
-    blacklistResultList = futures.collect { it.get() } as Collection<LookupResult>
-} finally {
-    threadPool.shutdown()
+    try {
+        // Try to make lookups with parallel threads
+        List<Future> futures = dnsRblProviderList.collect { blProvider ->
+            threadPool.submit({ ->
+                myClosure blProvider, ipAddress
+            } as Callable);
+        }
+
+        // Get all results from threads
+        blacklistResultList = futures.collect { it.get() } as Collection<LookupResult>
+    } finally {
+        threadPool.shutdown()
+    }
+
+    // Stop total time measurement
+    def timeStop = new Date()
+
+    // Evaluate output and build result map
+    buildMonitoringOutput(blacklistResultList)
+
+    // Calculate time duration
+    TimeDuration duration = TimeCategory.minus(timeStop, timeStart)
+    times.put("DnsRblTotalTime", duration.toMilliseconds())
+    log.info('bsf %s finished', svc_name);
 }
 
-// Stop total time measurement
-def timeStop = new Date()
-
-// Calculate time duration
-TimeDuration duration = TimeCategory.minus(timeStop, timeStart)
-
-// Output result
-println "${duration.toMilliseconds()}, " + buildMonitoringOutput(blacklistResultList)
+SpamBlackListMonitor spamBlackListMonitor = new SpamBlackListMonitor()
+spamBlackListMonitor.execute()
