@@ -87,7 +87,7 @@ class LookupResult {
 }
 
 /**
- * Amount of Threads for parallel the DNS lookups
+ * Amount of Threads for parallel DNS lookups
  */
 MAX_THREADS = 10
 
