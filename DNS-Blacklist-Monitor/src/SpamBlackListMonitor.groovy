@@ -336,6 +336,11 @@ try {
         bsf_monitor.log("DEBUG", "Thread pool awaiting timeout set to " + TIMEOUT, null)
     } catch (InterruptedException e) {
         bsf_monitor.log("ERROR", "Thread pool awaiting timeout was interrupted with message: " + e.getMessage())
+        
+        // Cleanup the thread pool including all waiting threads.
+        if (!threadPool.isShutdown()) {
+            threadPool.shutdownNow();
+        }
     }
     bsf_monitor.log("DEBUG", "Shutdown SpamBlackListMonitor thread pool", null)
 }
