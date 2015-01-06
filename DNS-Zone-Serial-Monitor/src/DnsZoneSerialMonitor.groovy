@@ -1,45 +1,46 @@
 #!/usr/bin/env groovy
 
-@Grab(group='dnsjava', module='dnsjava', version='2.1.1')
-import org.xbill.DNS.*;
+def zone = "gitslap.me"
 
-zone = "gitslap.me"
-
-def dnsServer = [
+def servers = [
         'ns.inwx.de',
         'ns2.inwx.de',
-        'ns3.inwx.de'
-]
+        'ns3.inwx.de',
+	'8.8.8.7'
+] as Set
 
-def compareMap = new HashMap()
-def dnsResults = new HashMap()
+///////////////////////////////////////////////////////////////////
 
-dnsServer.each{
-    lookupServer = it;
-    Resolver resolver = new SimpleResolver(lookupServer)
-    Lookup lookup = new Lookup(zone,Type.SOA)
-    lookup.setResolver(resolver)
-    records = lookup.run()
-    records.each {
-        result = it
-        compareMap.put(zone, result.getSerial())
-        dnsResults.put(lookupServer, result.getSerial())
-    }
+@Grab(group='dnsjava', module='dnsjava', version='2.1.1')
+import org.xbill.DNS.*
+
+@Grab(group='com.google.guava', module='guava', version='18.0')
+import com.google.common.collect.Sets
+
+def serials = new HashSet()
+def results = new HashMap()
+
+servers.each { server ->
+	def resolver = new SimpleResolver(server)
+	resolver.timeout = 1
+
+    def lookup = new Lookup(zone, Type.SOA)
+	lookup.resolver = resolver
+	lookup.cache = null
+
+	lookup.run().each { result ->
+	    serials.add(result.serial)
+	    results.put(server, result.serial)
+	}
 }
 
-if (compareMap.size() == 1) {
-    println("Everything is awesome! " + compareMap.size())
-    dnsResults.each {
-        println("Detail for Zone: " + zone + " :: "+ it.getKey() + " :: " + it.getValue())
-    }
-} else {
-    println("Fucked up! " + compareMap.size())
-    dnsResults.each {
-        println("Detail for Zone: " + zone + " :: "+ it.getKey() + " :: " + it.getValue())
-    }
+if (results.size() != servers.size()) {
+	missing = servers - results.keySet()
+	println("Some servers did not deliver SOA records: ${missing}")
+	System.exit(1)
+
+} else if (serials.size > 1) {
+	println("Found different serials: ${serials}")
+	System.exit(2)
+	
 }
-
-
-
-
-
